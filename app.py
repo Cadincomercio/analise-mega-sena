@@ -100,13 +100,69 @@ with tabs[0]:
     fig = px.bar(freq, labels={'index':'Número', 'value':'Frequência'}, title="Frequência Absoluta")
     st.plotly_chart(fig, use_container_width=True)
 
+with tabs[1]:
+    pares = df_filtered[[f'Bola{i}' for i in range(1,7)]].applymap(lambda x: x % 2 == 0).sum(axis=1)
+    fig_pares = px.histogram(pares, nbins=6, title='Distribuição de Pares nos Sorteios')
+    st.plotly_chart(fig_pares, use_container_width=True)
+
+with tabs[2]:
+    df_filtered['Soma'] = df_filtered[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
+    fig_soma = px.histogram(df_filtered, x='Soma', nbins=30, title='Distribuição da Soma dos Números')
+    st.plotly_chart(fig_soma, use_container_width=True)
+
+with tabs[3]:
+    ent = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
+    fig_ent = px.line(ent, title='Entropia dos Sorteios')
+    st.plotly_chart(fig_ent, use_container_width=True)
+
+with tabs[4]:
+    nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+    quadrantes = pd.cut(nums, bins=[0,15,30,45,60], labels=['1-15','16-30','31-45','46-60']).value_counts()
+    fig_quad = px.pie(values=quadrantes.values, names=quadrantes.index, title='Distribuição por Quadrantes')
+    st.plotly_chart(fig_quad, use_container_width=True)
+
+with tabs[5]:
+    nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+    mod_5 = pd.Series(nums % 5).value_counts().sort_index()
+    mod_7 = pd.Series(nums % 7).value_counts().sort_index()
+    mod_10 = pd.Series(nums % 10).value_counts().sort_index()
+    st.write("Módulo 5:", mod_5)
+    st.write("Módulo 7:", mod_7)
+    st.write("Módulo 10:", mod_10)
+
+with tabs[6]:
+    diffs = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
+    fig_diffs = px.histogram(diffs, nbins=20, title='Diferenças Absolutas entre Números')
+    st.plotly_chart(fig_diffs, use_container_width=True)
+
+with tabs[7]:
+    nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+    primeiro_digito = pd.Series(nums // 10).value_counts().sort_index()
+    ultimo_digito = pd.Series(nums % 10).value_counts().sort_index()
+    st.write("Primeiro Dígito:", primeiro_digito)
+    st.write("Último Dígito:", ultimo_digito)
+
+with tabs[8]:
+    nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+    primos = [x for x in nums if all(x % i for i in range(2, int(np.sqrt(x)) + 1))]
+    quadrados = [x for x in nums if np.sqrt(x).is_integer()]
+    fibonacci = [1,2,3,5,8,13,21,34,55]
+    fib_nums = [x for x in nums if x in fibonacci]
+    st.write("Primos:", len(primos))
+    st.write("Quadrados:", len(quadrados))
+    st.write("Fibonacci:", len(fib_nums))
+
+with tabs[9]:
+    gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(np.mean, axis=1)
+    fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
+    st.plotly_chart(fig_gravity, use_container_width=True)
+
 with tabs[10]:
     st.subheader("Gerador Inteligente Clássico")
     soma_min = st.number_input("Soma mínima", value=180, key='soma_min')
     soma_max = st.number_input("Soma máxima", value=210, key='soma_max')
     incluir_primos = st.checkbox("Incluir número primo", value=True)
     incluir_quadrados = st.checkbox("Incluir quadrado perfeito", value=True)
-
     if st.button("Gerar Combinação Clássica"):
         combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
         st.success(f"Combinação Gerada: {combinacao}")
@@ -115,7 +171,6 @@ with tabs[11]:
     st.subheader("Predição Avançada por Machine Learning")
     soma_min_pred = st.number_input("Soma mínima desejada (IA)", value=180, key='soma_min_pred')
     soma_max_pred = st.number_input("Soma máxima desejada (IA)", value=210, key='soma_max_pred')
-
     if st.button("Treinar Modelo e Sugerir Combinação"):
         with st.spinner('Treinando modelo...'):
             numeros = list(range(1, 61))
