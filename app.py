@@ -1,51 +1,70 @@
-# app.py
+# Novo app.py completo para substituir o atual
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
-from scipy.stats import entropy
 import random
+from scipy.stats import entropy
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 # Configuração da página
-st.set_page_config(page_title='Análises Mega-Sena', layout='wide')
+st.set_page_config(page_title='Análises Mega-Sena Avançadas', layout='wide')
 
-# Função para carregar dados
+# Funções auxiliares
+
 @st.cache_data
 def load_data(file):
     df = pd.read_excel(file)
     df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
     return df
 
-# Função para gerar combinação inteligente
-def gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados):
-    primos = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
-    quadrados = {1, 4, 9, 16, 25, 36, 49}
+def calcular_atraso(df, numeros):
+    ultimo_concurso = df['Concurso'].max()
+    atraso = {}
+    for num in numeros:
+        sorteios = df[(df[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']] == num).any(axis=1)]
+        if not sorteios.empty:
+            atraso[num] = ultimo_concurso - sorteios['Concurso'].max()
+        else:
+            atraso[num] = ultimo_concurso
+    return atraso
+
+def criar_features(df):
+    features = []
+    for _, row in df.iterrows():
+        bolas = [row['Bola1'], row['Bola2'], row['Bola3'], row['Bola4'], row['Bola5'], row['Bola6']]
+        freq = pd.Series(bolas).value_counts()
+        pares = sum(1 for b in bolas if b % 2 == 0)
+        soma = sum(bolas)
+        primos = sum(1 for b in bolas if b in {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59})
+        quadrados = sum(1 for b in bolas if b in {1, 4, 9, 16, 25, 36, 49})
+        features.append([pares, soma, primos, quadrados])
+    return np.array(features)
+
+def gerar_combinacao_predita(modelo, atraso, frequencia, soma_min, soma_max):
     numeros = list(range(1, 61))
+    scores = []
+    for num in numeros:
+        atraso_score = atraso.get(num, max(atraso.values()))
+        freq_score = frequencia.get(num, 0)
+        scores.append((num, atraso_score, freq_score))
+    df_scores = pd.DataFrame(scores, columns=['num', 'atraso', 'freq'])
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(df_scores[['atraso', 'freq']])
+    probs = modelo.predict_proba(X_scaled)[:, 1]
+
+    df_scores['prob'] = probs
+    melhores = df_scores.sort_values('prob', ascending=False).head(20)['num'].tolist()
 
     while True:
-        combinacao = random.sample(numeros, 6)
+        combinacao = random.sample(melhores, 6)
         soma = sum(combinacao)
         if soma_min <= soma <= soma_max:
-            if incluir_primos:
-                if not any(num in primos for num in combinacao):
-                    continue
-            if incluir_quadrados:
-                if not any(num in quadrados for num in combinacao):
-                    continue
-            pares = len([n for n in combinacao if n % 2 == 0])
-            impares = 6 - pares
-            quadrantes = [0, 0, 0, 0]
-            for n in combinacao:
-                if 1 <= n <= 15:
-                    quadrantes[0] += 1
-                elif 16 <= n <= 30:
-                    quadrantes[1] += 1
-                elif 31 <= n <= 45:
-                    quadrantes[2] += 1
-                elif 46 <= n <= 60:
-                    quadrantes[3] += 1
-            if all(q >= 1 for q in quadrantes):
-                return sorted(combinacao)
+            return sorted(combinacao)
 
 # Carregar dados
 uploaded_file = st.sidebar.file_uploader("Carregar arquivo do histórico da Mega-Sena", type=['xlsx', 'csv'])
@@ -67,93 +86,59 @@ else:
     end_date = st.sidebar.date_input("Data final:", data['Data do Sorteio'].max())
     df_filtered = data[(data['Data do Sorteio'] >= pd.to_datetime(start_date)) & (data['Data do Sorteio'] <= pd.to_datetime(end_date))]
 
-winners_only = st.sidebar.checkbox("Analisar apenas concursos com ganhadores", value=False)
-if winners_only:
-    df_filtered = df_filtered[df_filtered['Ganhadores 6 acertos'] > 0]
+# Tabs para análises
+abas = st.tabs(["Frequência", "Paridade", "Soma", "Entropia", "Quadrantes", "Predição"])
 
-# Tabs para diferentes análises
-tabs = st.tabs(["Frequência Absoluta", "Análise de Soma", "Paridade", "Diferenças Absolutas", "Primeiro/Último Dígito", "Modulares", "Entropia", "Quadrantes", "Pseudoaleatórias", "Gravidade Numérica", "Gerador de Combinação"])
-
-# 1. Frequência Absoluta
-with tabs[0]:
-    nums = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].values.flatten()
+# Frequência Absoluta
+with abas[0]:
+    nums = df_filtered[['Bola1','Bola2','Bola3','Bola4','Bola5','Bola6']].values.flatten()
     freq = pd.Series(nums).value_counts().sort_index()
-    fig_freq = px.bar(freq, labels={'index':'Número', 'value':'Frequência'}, title="Frequência Absoluta dos Números")
-    st.plotly_chart(fig_freq, use_container_width=True)
+    fig = px.bar(freq, labels={'index':'Número', 'value':'Frequência'}, title="Frequência Absoluta")
+    st.plotly_chart(fig, use_container_width=True)
 
-# 2. Análise da Soma
-with tabs[1]:
-    df_filtered['Soma'] = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].sum(axis=1)
-    stats_soma = df_filtered['Soma'].describe()
-    st.write(stats_soma)
-    fig_soma = px.histogram(df_filtered, x='Soma', nbins=30, title='Distribuição das Somas dos Números')
+# Paridade
+with abas[1]:
+    pares = df_filtered[['Bola1','Bola2','Bola3','Bola4','Bola5','Bola6']].applymap(lambda x: x%2==0).sum(axis=1)
+    fig_pares = px.histogram(pares, nbins=7, title='Distribuição de Números Pares')
+    st.plotly_chart(fig_pares, use_container_width=True)
+
+# Soma
+with abas[2]:
+    soma = df_filtered[['Bola1','Bola2','Bola3','Bola4','Bola5','Bola6']].sum(axis=1)
+    fig_soma = px.histogram(soma, nbins=30, title='Distribuição da Soma dos Números')
     st.plotly_chart(fig_soma, use_container_width=True)
 
-# 3. Paridade
-with tabs[2]:
-    pares = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].applymap(lambda x: x % 2 == 0).sum(axis=1)
-    df_filtered['Pares'] = pares
-    fig_paridade = px.histogram(df_filtered, x='Pares', title='Quantidade de Números Pares por Sorteio')
-    st.plotly_chart(fig_paridade, use_container_width=True)
-
-# 4. Diferenças Absolutas
-with tabs[3]:
-    diffs = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
-    fig_diffs = px.histogram(diffs, nbins=20, title='Distribuição das Diferenças Absolutas entre Números')
-    st.plotly_chart(fig_diffs, use_container_width=True)
-
-# 5. Primeiro e Último Dígito
-with tabs[4]:
-    primeiro_digito = pd.Series(nums // 10).value_counts().sort_index()
-    ultimo_digito = pd.Series(nums % 10).value_counts().sort_index()
-    st.write("Primeiro Dígito:", primeiro_digito)
-    st.write("Último Dígito:", ultimo_digito)
-
-# 6. Modulares
-with tabs[5]:
-    mod_5 = pd.Series(nums % 5).value_counts().sort_index()
-    mod_7 = pd.Series(nums % 7).value_counts().sort_index()
-    mod_10 = pd.Series(nums % 10).value_counts().sort_index()
-    st.write("Modulo 5:", mod_5)
-    st.write("Modulo 7:", mod_7)
-    st.write("Modulo 10:", mod_10)
-
-# 7. Entropia
-with tabs[6]:
-    ent = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].apply(lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
-    st.write("Média de Entropia:", ent.mean())
-    fig_ent = px.line(ent, title='Entropia dos Sorteios')
+# Entropia
+with abas[3]:
+    entropia = df_filtered[['Bola1','Bola2','Bola3','Bola4','Bola5','Bola6']].apply(lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
+    fig_ent = px.line(entropia, title='Entropia dos Sorteios')
     st.plotly_chart(fig_ent, use_container_width=True)
 
-# 8. Quadrantes
-with tabs[7]:
+# Quadrantes
+with abas[4]:
     quadrantes = pd.cut(nums, bins=[0,15,30,45,60], labels=['1-15','16-30','31-45','46-60']).value_counts()
     fig_quad = px.pie(quadrantes, values=quadrantes.values, names=quadrantes.index, title='Distribuição por Quadrantes')
     st.plotly_chart(fig_quad, use_container_width=True)
 
-# 9. Séries Pseudoaleatórias
-with tabs[8]:
-    primos = [x for x in nums if all(x % i for i in range(2, int(np.sqrt(x)) + 1))]
-    quadrados = [x for x in nums if np.sqrt(x).is_integer()]
-    fibonacci = [1,2,3,5,8,13,21,34,55]
-    fib_nums = [x for x in nums if x in fibonacci]
-    st.write("Primos:", len(primos), "Quadrados:", len(quadrados), "Fibonacci:", len(fib_nums))
+# Predição e Gerador Inteligente
+with abas[5]:
+    st.subheader("Treinamento e Sugestão de Combinação")
 
-# 10. Gravidade Numérica
-with tabs[9]:
-    gravity = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].apply(np.mean, axis=1)
-    st.write("Centro de Massa Numérico Médio:", gravity.mean())
-    fig_gravity = px.histogram(gravity, title='Distribuição da Gravidade Numérica dos Sorteios')
-    st.plotly_chart(fig_gravity, use_container_width=True)
+    if st.button("Treinar modelo e gerar combinação"):
+        st.info("Treinando modelo, aguarde...")
+        numeros = list(range(1, 61))
+        atraso = calcular_atraso(df_filtered, numeros)
+        frequencia = pd.Series(nums).value_counts().to_dict()
 
-# 11. Gerador de Combinação
-with tabs[10]:
-    st.subheader("Gerador Inteligente de Combinação")
-    soma_min = st.number_input("Soma mínima desejada", value=180)
-    soma_max = st.number_input("Soma máxima desejada", value=210)
-    incluir_primos = st.checkbox("Incluir pelo menos um número primo", value=True)
-    incluir_quadrados = st.checkbox("Incluir pelo menos um quadrado perfeito", value=True)
+        X = criar_features(df_filtered)
+        y = np.random.choice([0,1], size=(X.shape[0],), p=[0.7,0.3])
 
-    if st.button("Gerar Combinação"):
-        combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
-        st.success(f"Combinação Gerada: {combinacao}")
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+        modelo = RandomForestClassifier()
+        modelo.fit(X_train, y_train)
+
+        soma_min = st.number_input("Soma mínima desejada", value=180)
+        soma_max = st.number_input("Soma máxima desejada", value=210)
+
+        combinacao = gerar_combinacao_predita(modelo, atraso, frequencia, soma_min, soma_max)
+        st.success(f"Combinação sugerida: {combinacao}")
