@@ -12,7 +12,7 @@ st.set_page_config(page_title='Análises Mega-Sena', layout='wide')
 @st.cache_data
 def load_data(file):
     df = pd.read_excel(file)
-    df['Data'] = pd.to_datetime(df['Data'], dayfirst=True)
+    df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
     return df
 
 # Carregar dados
@@ -31,27 +31,27 @@ if interval_option == 'Últimos N concursos':
     N = st.sidebar.number_input("Quantidade de últimos concursos:", min_value=1, value=100)
     df_filtered = data.tail(N)
 else:
-    start_date = st.sidebar.date_input("Data inicial:", data['Data'].min())
-    end_date = st.sidebar.date_input("Data final:", data['Data'].max())
-    df_filtered = data[(data['Data'] >= pd.to_datetime(start_date)) & (data['Data'] <= pd.to_datetime(end_date))]
+    start_date = st.sidebar.date_input("Data inicial:", data['Data do Sorteio'].min())
+    end_date = st.sidebar.date_input("Data final:", data['Data do Sorteio'].max())
+    df_filtered = data[(data['Data do Sorteio'] >= pd.to_datetime(start_date)) & (data['Data do Sorteio'] <= pd.to_datetime(end_date))]
 
 winners_only = st.sidebar.checkbox("Analisar apenas concursos com ganhadores", value=False)
 if winners_only:
-    df_filtered = df_filtered[df_filtered['Ganhadores_Sena'] > 0]
+    df_filtered = df_filtered[df_filtered['Ganhadores 6 acertos'] > 0]
 
 # Tabs para diferentes análises
 tabs = st.tabs(["Frequência Absoluta", "Análise de Soma", "Paridade", "Diferenças Absolutas", "Primeiro/Último Dígito", "Modulares", "Entropia", "Quadrantes", "Pseudoaleatórias", "Gravidade Numérica"])
 
 # 1. Frequência Absoluta
 with tabs[0]:
-    nums = df_filtered.iloc[:, 2:8].values.flatten()
+    nums = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].values.flatten()
     freq = pd.Series(nums).value_counts().sort_index()
     fig_freq = px.bar(freq, labels={'index':'Número', 'value':'Frequência'}, title="Frequência Absoluta dos Números")
     st.plotly_chart(fig_freq, use_container_width=True)
 
 # 2. Análise da Soma
 with tabs[1]:
-    df_filtered['Soma'] = df_filtered.iloc[:, 2:8].sum(axis=1)
+    df_filtered['Soma'] = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].sum(axis=1)
     stats_soma = df_filtered['Soma'].describe()
     st.write(stats_soma)
     fig_soma = px.histogram(df_filtered, x='Soma', nbins=30, title='Distribuição das Somas dos Números')
@@ -59,14 +59,14 @@ with tabs[1]:
 
 # 3. Paridade
 with tabs[2]:
-    pares = df_filtered.iloc[:, 2:8].applymap(lambda x: x % 2 == 0).sum(axis=1)
+    pares = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].applymap(lambda x: x % 2 == 0).sum(axis=1)
     df_filtered['Pares'] = pares
     fig_paridade = px.histogram(df_filtered, x='Pares', title='Quantidade de Números Pares por Sorteio')
     st.plotly_chart(fig_paridade, use_container_width=True)
 
 # 4. Diferenças Absolutas
 with tabs[3]:
-    diffs = df_filtered.iloc[:, 2:8].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
+    diffs = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
     fig_diffs = px.histogram(diffs, nbins=20, title='Distribuição das Diferenças Absolutas entre Números')
     st.plotly_chart(fig_diffs, use_container_width=True)
 
@@ -88,7 +88,7 @@ with tabs[5]:
 
 # 7. Entropia
 with tabs[6]:
-    ent = df_filtered.iloc[:, 2:8].apply(lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
+    ent = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].apply(lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
     st.write("Média de Entropia:", ent.mean())
     fig_ent = px.line(ent, title='Entropia dos Sorteios')
     st.plotly_chart(fig_ent, use_container_width=True)
@@ -109,7 +109,7 @@ with tabs[8]:
 
 # 10. Gravidade Numérica
 with tabs[9]:
-    gravity = df_filtered.iloc[:, 2:8].apply(np.mean, axis=1)
+    gravity = df_filtered[['Bola1', 'Bola2', 'Bola3', 'Bola4', 'Bola5', 'Bola6']].apply(np.mean, axis=1)
     st.write("Centro de Massa Numérico Médio:", gravity.mean())
     fig_gravity = px.histogram(gravity, title='Distribuição da Gravidade Numérica dos Sorteios')
     st.plotly_chart(fig_gravity, use_container_width=True)
