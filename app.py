@@ -1,3 +1,4 @@
+
 # app.py
 import streamlit as st
 import pandas as pd
@@ -77,7 +78,7 @@ else:
     st.stop()
 
 st.sidebar.title("Filtros")
-interval_option = st.sidebar.radio("Intervalo:", ['Últimos N concursos', 'Intervalo por datas'])
+interval_option = st.sidebar.radio("Intervalo de análise:", ['Últimos N concursos', 'Intervalo por datas'])
 
 if interval_option == 'Últimos N concursos':
     N = st.sidebar.number_input("N concursos:", min_value=1, value=100)
@@ -86,6 +87,10 @@ else:
     start_date = st.sidebar.date_input("Data inicial:", data['Data do Sorteio'].min())
     end_date = st.sidebar.date_input("Data final:", data['Data do Sorteio'].max())
     df_filtered = data[(data['Data do Sorteio'] >= pd.to_datetime(start_date)) & (data['Data do Sorteio'] <= pd.to_datetime(end_date))]
+
+winners_only = st.sidebar.checkbox("Analisar apenas concursos com ganhadores", value=False)
+if winners_only:
+    df_filtered = df_filtered[df_filtered['Ganhadores 6 acertos'] > 0]
 
 tabs = st.tabs(["Frequência", "Paridade", "Soma", "Entropia", "Quadrantes", "Modulares", "Diferenças Absolutas", "Primeiro/Último Dígito", "Pseudoaleatórias", "Gravidade Numérica", "Gerador de Combinação", "Predição por IA"])
 
