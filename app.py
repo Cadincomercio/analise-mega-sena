@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 from scipy.stats import entropy
+import random
 
 # Configuração da página
 st.set_page_config(page_title='Análises Mega-Sena', layout='wide')
@@ -14,6 +15,37 @@ def load_data(file):
     df = pd.read_excel(file)
     df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
     return df
+
+# Função para gerar combinação inteligente
+def gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados):
+    primos = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
+    quadrados = {1, 4, 9, 16, 25, 36, 49}
+    numeros = list(range(1, 61))
+
+    while True:
+        combinacao = random.sample(numeros, 6)
+        soma = sum(combinacao)
+        if soma_min <= soma <= soma_max:
+            if incluir_primos:
+                if not any(num in primos for num in combinacao):
+                    continue
+            if incluir_quadrados:
+                if not any(num in quadrados for num in combinacao):
+                    continue
+            pares = len([n for n in combinacao if n % 2 == 0])
+            impares = 6 - pares
+            quadrantes = [0, 0, 0, 0]
+            for n in combinacao:
+                if 1 <= n <= 15:
+                    quadrantes[0] += 1
+                elif 16 <= n <= 30:
+                    quadrantes[1] += 1
+                elif 31 <= n <= 45:
+                    quadrantes[2] += 1
+                elif 46 <= n <= 60:
+                    quadrantes[3] += 1
+            if all(q >= 1 for q in quadrantes):
+                return sorted(combinacao)
 
 # Carregar dados
 uploaded_file = st.sidebar.file_uploader("Carregar arquivo do histórico da Mega-Sena", type=['xlsx', 'csv'])
@@ -40,7 +72,7 @@ if winners_only:
     df_filtered = df_filtered[df_filtered['Ganhadores 6 acertos'] > 0]
 
 # Tabs para diferentes análises
-tabs = st.tabs(["Frequência Absoluta", "Análise de Soma", "Paridade", "Diferenças Absolutas", "Primeiro/Último Dígito", "Modulares", "Entropia", "Quadrantes", "Pseudoaleatórias", "Gravidade Numérica"])
+tabs = st.tabs(["Frequência Absoluta", "Análise de Soma", "Paridade", "Diferenças Absolutas", "Primeiro/Último Dígito", "Modulares", "Entropia", "Quadrantes", "Pseudoaleatórias", "Gravidade Numérica", "Gerador de Combinação"])
 
 # 1. Frequência Absoluta
 with tabs[0]:
@@ -113,3 +145,15 @@ with tabs[9]:
     st.write("Centro de Massa Numérico Médio:", gravity.mean())
     fig_gravity = px.histogram(gravity, title='Distribuição da Gravidade Numérica dos Sorteios')
     st.plotly_chart(fig_gravity, use_container_width=True)
+
+# 11. Gerador de Combinação
+with tabs[10]:
+    st.subheader("Gerador Inteligente de Combinação")
+    soma_min = st.number_input("Soma mínima desejada", value=180)
+    soma_max = st.number_input("Soma máxima desejada", value=210)
+    incluir_primos = st.checkbox("Incluir pelo menos um número primo", value=True)
+    incluir_quadrados = st.checkbox("Incluir pelo menos um quadrado perfeito", value=True)
+
+    if st.button("Gerar Combinação"):
+        combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
+        st.success(f"Combinação Gerada: {combinacao}")
