@@ -110,3 +110,19 @@ with tabs[8]:
     gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(np.mean, axis=1)
     fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
     st.plotly_chart(fig_gravity, use_container_width=True)
+
+# Gerador de Combinação
+with tabs[9]:
+    st.subheader("Gerador Inteligente Clássico")
+    soma_min = st.number_input("Soma mínima", value=180, key='soma_min')
+    soma_max = st.number_input("Soma máxima", value=210, key='soma_max')
+    incluir_primos = st.checkbox("Incluir número primo", value=True)
+    incluir_quadrados = st.checkbox("Incluir quadrado perfeito", value=True)
+    
+    def gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados):
+        primos = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
+        quadrados = {1, 4, 9, 16, 25, 36, 49}
+        numeros = list(range(1, 61))
+        while True:
+            combinacao = random.sample(numeros,
+
