@@ -1,8 +1,7 @@
-import streamlit as st
+""import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 
 # Configurações iniciais
@@ -27,7 +26,7 @@ if uploaded_file:
     st.header('Frequência dos Números Sorteados')
     freq = pd.Series(df[bolas].values.ravel()).value_counts().sort_index()
     plt.figure(figsize=(15, 5))
-    sns.barplot(x=freq.index, y=freq.values, palette='viridis')
+    plt.bar(freq.index, freq.values, color='blue')
     plt.title('Frequência de cada número')
     plt.xlabel('Número')
     plt.ylabel('Frequência')
@@ -59,3 +58,4 @@ if uploaded_file:
 
 else:
     st.warning('Por favor, carregue um arquivo para iniciar a análise.')
+""
