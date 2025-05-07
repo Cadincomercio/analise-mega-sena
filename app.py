@@ -61,42 +61,13 @@ else:
 
 # Criação das abas
 tabs = st.tabs([
-    "Frequência", "Paridade", "Soma", "Entropia", 
-    "Quadrantes", "Modulares", "Diferenças Absolutas", 
+    "Entropia", "Quadrantes", "Modulares", "Diferenças Absolutas",
     "Primeiro/Último Dígito", "Pseudoaleatórias", 
     "Gravidade Numérica", "Gerador de Combinação", "Predição por IA"
 ])
 
-# Frequência
-with tabs[0]:
-    try:
-        nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
-        freq = pd.Series(nums).value_counts().sort_index()
-        fig = px.bar(freq, labels={'index':'Número', 'value':'Frequência'}, title="Frequência Absoluta")
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.error(f"Erro ao gerar a aba de Frequência: {e}")
-
-# Paridade
-with tabs[1]:
-    try:
-        pares = df_filtered[[f'Bola{i}' for i in range(1,7)]].applymap(lambda x: x % 2 == 0).sum(axis=1)
-        fig_pares = px.histogram(pares, nbins=6, title='Distribuição de Pares nos Sorteios')
-        st.plotly_chart(fig_pares, use_container_width=True)
-    except Exception as e:
-        st.error(f"Erro ao gerar a aba de Paridade: {e}")
-
-# Soma
-with tabs[2]:
-    try:
-        df_filtered['Soma'] = df_filtered[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
-        fig_soma = px.histogram(df_filtered, x='Soma', nbins=30, title='Distribuição da Soma dos Números')
-        st.plotly_chart(fig_soma, use_container_width=True)
-    except Exception as e:
-        st.error(f"Erro ao gerar a aba de Soma: {e}")
-
 # Entropia
-with tabs[3]:
+with tabs[0]:
     try:
         ent = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(
             lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
@@ -106,7 +77,7 @@ with tabs[3]:
         st.error(f"Erro ao gerar a aba de Entropia: {e}")
 
 # Quadrantes
-with tabs[4]:
+with tabs[1]:
     try:
         nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
         quadrantes = pd.cut(nums, bins=[0,15,30,45,60], labels=['1-15','16-30','31-45','46-60']).value_counts()
@@ -116,8 +87,9 @@ with tabs[4]:
         st.error(f"Erro ao gerar a aba de Quadrantes: {e}")
 
 # Modulares
-with tabs[5]:
+with tabs[2]:
     try:
+        nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
         mod_5 = pd.Series(nums % 5).value_counts().sort_index()
         mod_7 = pd.Series(nums % 7).value_counts().sort_index()
         mod_10 = pd.Series(nums % 10).value_counts().sort_index()
@@ -128,10 +100,37 @@ with tabs[5]:
         st.error(f"Erro ao gerar a aba de Modulares: {e}")
 
 # Diferenças Absolutas
-with tabs[6]:
+with tabs[3]:
     try:
         diffs = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
         fig_diffs = px.histogram(diffs, nbins=20, title='Diferenças Absolutas entre Números')
         st.plotly_chart(fig_diffs, use_container_width=True)
     except Exception as e:
         st.error(f"Erro ao gerar a aba de Diferenças Absolutas: {e}")
+
+# Primeiro/Último Dígito
+with tabs[4]:
+    try:
+        nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+        primeiro_digito = pd.Series(nums // 10).value_counts().sort_index()
+        ultimo_digito = pd.Series(nums % 10).value_counts().sort_index()
+        st.write("Primeiro Dígito:", primeiro_digito)
+        st.write("Último Dígito:", ultimo_digito)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Primeiro/Último Dígito: {e}")
+
+# Pseudoaleatórias
+with tabs[5]:
+    try:
+        st.write("Em construção...")
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Pseudoaleatórias: {e}")
+
+# Gravidade Numérica
+with tabs[6]:
+    try:
+        gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(np.mean, axis=1)
+        fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
+        st.plotly_chart(fig_gravity, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Gravidade Numérica: {e}")
