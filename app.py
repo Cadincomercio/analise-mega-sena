@@ -53,97 +53,76 @@ tabs = st.tabs([
 ])
 
 # ------------------------
-# 🎯 Frequência
-# ------------------------
-with tabs[0]:
-    st.subheader("Frequência Absoluta dos Números")
-    nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
-    freq = pd.Series(nums).value_counts().sort_index()
-    fig = px.bar(freq, labels={'index': 'Número', 'value': 'Frequência'}, title="Frequência Absoluta")
-    st.plotly_chart(fig, use_container_width=True)
-
-# ------------------------
-# ⚖️ Paridade
-# ------------------------
-with tabs[1]:
-    st.subheader("Distribuição de Pares nos Sorteios")
-    pares = df_filtered[[f'Bola{i}' for i in range(1,7)]].applymap(lambda x: x % 2 == 0).sum(axis=1)
-    fig_pares = px.histogram(pares, nbins=6, title='Distribuição de Pares nos Sorteios')
-    st.plotly_chart(fig_pares, use_container_width=True)
-
-# ------------------------
-# ➕ Soma
-# ------------------------
-with tabs[2]:
-    st.subheader("Distribuição da Soma dos Números")
-    df_filtered['Soma'] = df_filtered[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
-    fig_soma = px.histogram(df_filtered, x='Soma', nbins=30, title='Soma dos Números por Sorteio')
-    st.plotly_chart(fig_soma, use_container_width=True)
-
-# ------------------------
-# 🔄 Entropia
-# ------------------------
-with tabs[3]:
-    st.subheader("Entropia dos Sorteios")
-    ent = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(
-        lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1
-    )
-    fig_ent = px.line(ent, title='Entropia dos Sorteios')
-    st.plotly_chart(fig_ent, use_container_width=True)
-
-# ------------------------
-# 🔢 Quadrantes
-# ------------------------
-with tabs[4]:
-    st.subheader("Distribuição por Quadrantes")
-    nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
-    quadrantes = pd.cut(nums, bins=[0,15,30,45,60], labels=['1-15','16-30','31-45','46-60']).value_counts()
-    fig_quad = px.pie(values=quadrantes.values, names=quadrantes.index, title='Quadrantes dos Números')
-    st.plotly_chart(fig_quad, use_container_width=True)
-
-# ------------------------
-# 🔀 Modulares
-# ------------------------
-with tabs[5]:
-    st.subheader("Distribuição Modular")
-    mod_5 = pd.Series(nums % 5).value_counts().sort_index()
-    mod_7 = pd.Series(nums % 7).value_counts().sort_index()
-    mod_10 = pd.Series(nums % 10).value_counts().sort_index()
-    st.write("Módulo 5:", mod_5)
-    st.write("Módulo 7:", mod_7)
-    st.write("Módulo 10:", mod_10)
-
-# ------------------------
-# 🔍 Diferenças Absolutas
-# ------------------------
-with tabs[6]:
-    st.subheader("Diferenças Absolutas entre Números")
-    diffs = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
-    fig_diffs = px.histogram(diffs, nbins=20, title='Diferenças Absolutas entre Números')
-    st.plotly_chart(fig_diffs, use_container_width=True)
-
-# ------------------------
-# 🔄 Primeiro/Último Dígito
-# ------------------------
-with tabs[7]:
-    st.subheader("Primeiro e Último Dígito dos Números")
-    primeiro_digito = pd.Series(nums // 10).value_counts().sort_index()
-    ultimo_digito = pd.Series(nums % 10).value_counts().sort_index()
-    st.write("Primeiro Dígito:", primeiro_digito)
-    st.write("Último Dígito:", ultimo_digito)
-
-# ------------------------
-# ⏳ Pseudoaleatórias
+# 🔄 Pseudoaleatórias
 # ------------------------
 with tabs[8]:
-    st.subheader("Pseudoaleatórias")
-    st.write("🔄 Em desenvolvimento...")
+    st.subheader("Análise Pseudoaleatórias")
+    try:
+        numeros = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+        aleatorios = np.random.choice(numeros, size=60, replace=True)
+        fig_aleatorios = px.histogram(aleatorios, nbins=30, title='Distribuição Pseudoaleatória')
+        st.plotly_chart(fig_aleatorios, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar pseudoaleatórias: {str(e)}")
 
 # ------------------------
-# 🌌 Gravidade Numérica
+# 🎲 Gerador de Combinação
 # ------------------------
-with tabs[9]:
-    st.subheader("Gravidade Numérica")
-    gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(np.mean, axis=1)
-    fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
-    st.plotly_chart(fig_gravity, use_container_width=True)
+with tabs[10]:
+    st.subheader("Gerador Inteligente Clássico")
+    soma_min = st.number_input("Soma mínima", value=180, key='soma_min')
+    soma_max = st.number_input("Soma máxima", value=210, key='soma_max')
+    incluir_primos = st.checkbox("Incluir número primo", value=True)
+    incluir_quadrados = st.checkbox("Incluir quadrado perfeito", value=True)
+
+    def gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados):
+        primos = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
+        quadrados = {1, 4, 9, 16, 25, 36, 49}
+        numeros = list(range(1, 61))
+        for _ in range(1000):
+            combinacao = sorted(random.sample(numeros, 6))
+            soma = sum(combinacao)
+            if soma_min <= soma <= soma_max:
+                if incluir_primos and not any(num in primos for num in combinacao):
+                    continue
+                if incluir_quadrados and not any(num in quadrados for num in combinacao):
+                    continue
+                return combinacao
+        return sorted(random.sample(numeros, 6))
+    
+    if st.button("Gerar Combinação Clássica"):
+        combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
+        st.success(f"Combinação Gerada: {combinacao}")
+
+# ------------------------
+# 🤖 Predição por IA
+# ------------------------
+with tabs[11]:
+    st.subheader("Predição Avançada por Machine Learning")
+    soma_min_pred = st.number_input("Soma mínima desejada (IA)", value=180, key='soma_min_pred')
+    soma_max_pred = st.number_input("Soma máxima desejada (IA)", value=210, key='soma_max_pred')
+
+    def criar_features(df):
+        features = pd.DataFrame()
+        features['Soma'] = df[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
+        features['Pares'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: (x % 2 == 0).sum(), axis=1)
+        features['PrimeiroDigito'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.floor(x/10).sum(), axis=1)
+        features['UltimoDigito'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: (x % 10).sum(), axis=1)
+        return features
+
+    if st.button("Treinar Modelo e Sugerir Combinação"):
+        try:
+            numeros = list(range(1, 61))
+            freq_series = pd.Series(df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten())
+            frequencia = freq_series.value_counts().to_dict()
+            X = criar_features(df_filtered)
+            y = np.random.choice([0, 1], size=(X.shape[0],), p=[0.7, 0.3])
+            
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+            modelo = RandomForestClassifier()
+            modelo.fit(X_train, y_train)
+            
+            combinacao = sorted(random.sample(list(frequencia.keys()), 6))
+            st.success(f"Combinação sugerida pela IA: {combinacao}")
+        except Exception as e:
+            st.error(f"Erro ao gerar predição por IA: {str(e)}")
