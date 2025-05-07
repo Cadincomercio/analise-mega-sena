@@ -1,6 +1,6 @@
-"streamlit
+streamlit
 pandas
 scikit-learn
 matplotlib
 numpy
-xlrd"
+xlrd
