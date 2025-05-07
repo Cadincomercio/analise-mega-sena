@@ -14,14 +14,21 @@ st.set_page_config(page_title='Análises Mega-Sena', layout='wide')
 # Função para carregar os dados
 @st.cache_data
 def load_data(file):
-    df = pd.read_excel(file)
-    df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
-    return df
+    try:
+        df = pd.read_excel(file)
+        df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar o arquivo: {e}")
+        return pd.DataFrame()
 
 # Interface de upload
 uploaded_file = st.sidebar.file_uploader("Carregar histórico Mega-Sena", type=['xlsx', 'csv'])
 if uploaded_file:
     data = load_data(uploaded_file)
+    if data.empty:
+        st.error("Erro: A planilha está vazia ou corrompida.")
+        st.stop()
 else:
     st.warning("Carregue um arquivo para começar.")
     st.stop()
@@ -44,6 +51,11 @@ winners_only = st.sidebar.checkbox("Analisar apenas concursos com ganhadores", v
 if winners_only:
     df_filtered = df_filtered[df_filtered['Ganhadores 6 acertos'] > 0]
 
+# Validação
+if df_filtered.empty:
+    st.error("Não existem resultados para os filtros aplicados.")
+    st.stop()
+
 # Criação das abas
 tabs = st.tabs([
     "Frequência", "Paridade", "Soma", "Entropia", 
@@ -52,6 +64,16 @@ tabs = st.tabs([
     "Gravidade Numérica", "Gerador de Combinação", "Predição por IA"
 ])
 
+# 🔍 Frequência
+with tabs[0]:
+    try:
+        nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+        freq = pd.Series(nums).value_counts().sort_index()
+        fig = px.bar(freq, labels={'index':'Número', 'value':'Frequência'}, title="Frequência Absoluta")
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Frequência: {e}")
+
 # 🔍 Gravidade Numérica
 with tabs[8]:
     try:
@@ -59,7 +81,7 @@ with tabs[8]:
         fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
         st.plotly_chart(fig_gravity, use_container_width=True)
     except Exception as e:
-        st.error(f"Erro ao calcular gravidade numérica: {e}")
+        st.error(f"Erro ao gerar a aba de Gravidade Numérica: {e}")
 
 # 🔍 Gerador de Combinação
 with tabs[9]:
@@ -73,20 +95,16 @@ with tabs[9]:
         primos = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
         quadrados = {1, 4, 9, 16, 25, 36, 49}
         numeros = list(range(1, 61))
-        tentativas = 0
-        while tentativas < 1000:
+        for _ in range(1000):
             combinacao = random.sample(numeros, 6)
             soma = sum(combinacao)
             if soma_min <= soma <= soma_max:
                 if incluir_primos and not any(num in primos for num in combinacao):
-                    tentativas += 1
                     continue
                 if incluir_quadrados and not any(num in quadrados for num in combinacao):
-                    tentativas += 1
                     continue
                 return sorted(combinacao)
-            tentativas += 1
-        return "Não foi possível gerar uma combinação válida."
+        return "Nenhuma combinação válida encontrada."
 
     if st.button("Gerar Combinação Clássica"):
         combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
@@ -107,20 +125,15 @@ with tabs[10]:
         return features
     
     if st.button("Treinar Modelo e Sugerir Combinação"):
-        with st.spinner('Treinando modelo...'):
-            try:
-                X = criar_features(df_filtered)
-                y = np.random.choice([0, 1], size=(X.shape[0],), p=[0.7, 0.3])
+        try:
+            X = criar_features(df_filtered)
+            y = np.random.choice([0, 1], size=(X.shape[0],), p=[0.7, 0.3])
 
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-                modelo = RandomForestClassifier()
-                modelo.fit(X_train, y_train)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+            modelo = RandomForestClassifier()
+            modelo.fit(X_train, y_train)
 
-                numeros = list(range(1, 61))
-                freq_series = pd.Series(df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten())
-                frequencia = freq_series.value_counts().to_dict()
-                
-                combinacao = random.sample(numeros, 6)
-                st.success(f"Combinação sugerida: {combinacao}")
-            except Exception as e:
-                st.error(f"Erro durante a predição: {e}")
+            combinacao = random.sample(list(range(1, 61)), 6)
+            st.success(f"Combinação sugerida: {combinacao}")
+        except Exception as e:
+            st.error(f"Erro ao treinar modelo: {e}")
