@@ -3,8 +3,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from scipy.stats import entropy
 import random
 
@@ -18,7 +16,7 @@ def load_data(file):
     df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
     return df
 
-# Carregar o arquivo
+# Interface de upload
 uploaded_file = st.sidebar.file_uploader("Carregar histórico Mega-Sena", type=['xlsx', 'csv'])
 if uploaded_file:
     data = load_data(uploaded_file)
@@ -26,41 +24,30 @@ else:
     st.warning("Carregue um arquivo para começar.")
     st.stop()
 
-# Configuração dos Filtros
+# Filtros
 st.sidebar.title("Filtros")
-interval_option = st.sidebar.radio("Escolha o filtro:", ['Últimos N Concursos', 'Intervalo por Datas'])
+interval_option = st.sidebar.radio("Intervalo de análise:", ['Últimos N concursos', 'Intervalo por datas'])
 
-if interval_option == 'Últimos N Concursos':
-    N = st.sidebar.number_input("Quantidade de concursos:", min_value=1, value=100)
+if interval_option == 'Últimos N concursos':
+    N = st.sidebar.number_input("N concursos:", min_value=1, value=100)
     df_filtered = data.sort_values(by='Concurso', ascending=False).head(N)
-
-elif interval_option == 'Intervalo por Datas':
+else:
     start_date = st.sidebar.date_input("Data inicial:", data['Data do Sorteio'].min())
     end_date = st.sidebar.date_input("Data final:", data['Data do Sorteio'].max())
-    if start_date < pd.to_datetime('1996-03-11'):
-        st.error("Data inicial não pode ser anterior a 11/03/1996.")
-    elif end_date > data['Data do Sorteio'].max():
-        st.error("Data final não pode ser superior à data do último sorteio.")
-    else:
-        df_filtered = data[(data['Data do Sorteio'] >= pd.to_datetime(start_date)) & 
-                           (data['Data do Sorteio'] <= pd.to_datetime(end_date))]
+    df_filtered = data[(data['Data do Sorteio'] >= pd.to_datetime(start_date)) & 
+                       (data['Data do Sorteio'] <= pd.to_datetime(end_date))]
 
-# Filtro de concursos premiados
-winners_only = st.sidebar.checkbox("Apenas concursos com ganhadores", value=False)
+# Filtro de apenas ganhadores
+winners_only = st.sidebar.checkbox("Analisar apenas concursos com ganhadores", value=False)
 if winners_only:
     df_filtered = df_filtered[df_filtered['Ganhadores 6 acertos'] > 0]
 
-# Verificar se há dados
-if df_filtered.empty:
-    st.warning("Nenhum resultado encontrado para os filtros selecionados.")
-    st.stop()
-
-# Tabs para visualização
+# Criação das abas
 tabs = st.tabs([
-    "Frequência", "Paridade", "Soma", "Entropia",
-    "Quadrantes", "Modulares", "Diferenças Absolutas",
-    "Primeiro/Último Dígito", "Pseudoaleatórias",
-    "Gravidade Numérica", "Gerador de Combinação", "Predição por IA"
+    "Frequência", "Paridade", "Soma", "Entropia", 
+    "Quadrantes", "Modulares", "Diferenças Absolutas", 
+    "Primeiro/Último Dígito", "Pseudoaleatórias", 
+    "Gravidade Numérica"
 ])
 
 # Frequência
@@ -84,7 +71,8 @@ with tabs[2]:
 
 # Entropia
 with tabs[3]:
-    ent = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
+    ent = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(
+        lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
     fig_ent = px.line(ent, title='Entropia dos Sorteios')
     st.plotly_chart(fig_ent, use_container_width=True)
 
@@ -94,3 +82,31 @@ with tabs[4]:
     quadrantes = pd.cut(nums, bins=[0,15,30,45,60], labels=['1-15','16-30','31-45','46-60']).value_counts()
     fig_quad = px.pie(values=quadrantes.values, names=quadrantes.index, title='Distribuição por Quadrantes')
     st.plotly_chart(fig_quad, use_container_width=True)
+
+# Modulares
+with tabs[5]:
+    mod_5 = pd.Series(nums % 5).value_counts().sort_index()
+    mod_7 = pd.Series(nums % 7).value_counts().sort_index()
+    mod_10 = pd.Series(nums % 10).value_counts().sort_index()
+    st.write("Módulo 5:", mod_5)
+    st.write("Módulo 7:", mod_7)
+    st.write("Módulo 10:", mod_10)
+
+# Diferenças Absolutas
+with tabs[6]:
+    diffs = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
+    fig_diffs = px.histogram(diffs, nbins=20, title='Diferenças Absolutas entre Números')
+    st.plotly_chart(fig_diffs, use_container_width=True)
+
+# Primeiro/Último Dígito
+with tabs[7]:
+    primeiro_digito = pd.Series(nums // 10).value_counts().sort_index()
+    ultimo_digito = pd.Series(nums % 10).value_counts().sort_index()
+    st.write("Primeiro Dígito:", primeiro_digito)
+    st.write("Último Dígito:", ultimo_digito)
+
+# Gravidade Numérica
+with tabs[8]:
+    gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(np.mean, axis=1)
+    fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
+    st.plotly_chart(fig_gravity, use_container_width=True)
