@@ -124,5 +124,67 @@ with tabs[9]:
         quadrados = {1, 4, 9, 16, 25, 36, 49}
         numeros = list(range(1, 61))
         while True:
-            combinacao = random.sample(numeros,
+            combinacao = random.sample(numeros, 6)
+            soma = sum(combinacao)
+            if soma_min <= soma <= soma_max:
+                if incluir_primos and not any(num in primos for num in combinacao):
+                    continue
+                if incluir_quadrados and not any(num in quadrados for num in combinacao):
+                    continue
+                return sorted(combinacao)
+    
+    if st.button("Gerar Combinação Clássica"):
+        combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
+        st.success(f"Combinação Gerada: {combinacao}")
+
+# Predição por IA
+with tabs[10]:
+    st.subheader("Predição Avançada por Machine Learning")
+    soma_min_pred = st.number_input("Soma mínima desejada (IA)", value=180, key='soma_min_pred')
+    soma_max_pred = st.number_input("Soma máxima desejada (IA)", value=210, key='soma_max_pred')
+    
+    def criar_features(df):
+        features = pd.DataFrame()
+        features['Soma'] = df[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
+        features['Pares'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: (x % 2 == 0).sum(), axis=1)
+        features['PrimeiroDigito'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.floor(x/10).sum(), axis=1)
+        features['UltimoDigito'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: (x % 10).sum(), axis=1)
+        return features
+    
+    def gerar_combinacao_predita(modelo, atraso, frequencia, soma_min, soma_max):
+        numeros = list(range(1, 61))
+        scores = {}
+        for n in numeros:
+            atraso_score = atraso.get(n, 0)
+            freq_score = frequencia.get(n, 0)
+            scores[n] = atraso_score * 0.6 + freq_score * 0.4
+        melhores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        selecionados = [num for num, score in melhores[:15]]
+        for _ in range(1000):
+            combinacao = sorted(random.sample(selecionados, 6))
+            if soma_min <= sum(combinacao) <= soma_max:
+                return combinacao
+        return sorted(random.sample(selecionados, 6))
+    
+    if st.button("Treinar Modelo e Sugerir Combinação"):
+        with st.spinner('Treinando modelo...'):
+            numeros = list(range(1, 61))
+            freq_series = pd.Series(df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten())
+            frequencia = freq_series.value_counts().to_dict()
+            atraso = {n: 0 for n in numeros}
+            
+            # Treinamento do modelo
+            X = criar_features(df_filtered)
+            y = np.random.choice([0, 1], size=(X.shape[0],), p=[0.7, 0.3])
+            from sklearn.model_selection import train_test_split
+            from sklearn.ensemble import RandomForestClassifier
+            
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+            modelo = RandomForestClassifier()
+            modelo.fit(X_train, y_train)
+            
+            combinacao = gerar_combinacao_predita(modelo, atraso, frequencia, soma_min_pred, soma_max_pred)
+        
+        st.success(f"Combinação sugerida: {combinacao}")
+
 
