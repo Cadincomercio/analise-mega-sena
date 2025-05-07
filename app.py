@@ -67,7 +67,7 @@ tabs = st.tabs([
     "Gravidade Numérica", "Gerador de Combinação", "Predição por IA"
 ])
 
-# 🔍 Frequência
+# Frequência
 with tabs[0]:
     try:
         nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
@@ -77,66 +77,61 @@ with tabs[0]:
     except Exception as e:
         st.error(f"Erro ao gerar a aba de Frequência: {e}")
 
-# 🔍 Gravidade Numérica
-with tabs[8]:
+# Paridade
+with tabs[1]:
     try:
-        gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].mean(axis=1)
-        fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
-        st.plotly_chart(fig_gravity, use_container_width=True)
+        pares = df_filtered[[f'Bola{i}' for i in range(1,7)]].applymap(lambda x: x % 2 == 0).sum(axis=1)
+        fig_pares = px.histogram(pares, nbins=6, title='Distribuição de Pares nos Sorteios')
+        st.plotly_chart(fig_pares, use_container_width=True)
     except Exception as e:
-        st.error(f"Erro ao gerar a aba de Gravidade Numérica: {e}")
+        st.error(f"Erro ao gerar a aba de Paridade: {e}")
 
-# 🔍 Gerador de Combinação
-with tabs[9]:
-    st.subheader("Gerador Inteligente Clássico")
-    soma_min = st.number_input("Soma mínima", value=180, key='soma_min')
-    soma_max = st.number_input("Soma máxima", value=210, key='soma_max')
-    incluir_primos = st.checkbox("Incluir número primo", value=True)
-    incluir_quadrados = st.checkbox("Incluir quadrado perfeito", value=True)
-    
-    def gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados):
-        primos = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
-        quadrados = {1, 4, 9, 16, 25, 36, 49}
-        numeros = list(range(1, 61))
-        for _ in range(1000):
-            combinacao = random.sample(numeros, 6)
-            soma = sum(combinacao)
-            if soma_min <= soma <= soma_max:
-                if incluir_primos and not any(num in primos for num in combinacao):
-                    continue
-                if incluir_quadrados and not any(num in quadrados for num in combinacao):
-                    continue
-                return sorted(combinacao)
-        return "Nenhuma combinação válida encontrada."
+# Soma
+with tabs[2]:
+    try:
+        df_filtered['Soma'] = df_filtered[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
+        fig_soma = px.histogram(df_filtered, x='Soma', nbins=30, title='Distribuição da Soma dos Números')
+        st.plotly_chart(fig_soma, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Soma: {e}")
 
-    if st.button("Gerar Combinação Clássica"):
-        combinacao = gerar_combinacao(soma_min, soma_max, incluir_primos, incluir_quadrados)
-        st.success(f"Combinação Gerada: {combinacao}")
+# Entropia
+with tabs[3]:
+    try:
+        ent = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(
+            lambda x: entropy(np.histogram(x, bins=60, range=(1,60))[0]), axis=1)
+        fig_ent = px.line(ent, title='Entropia dos Sorteios')
+        st.plotly_chart(fig_ent, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Entropia: {e}")
 
-# 🔍 Predição por IA
-with tabs[10]:
-    st.subheader("Predição Avançada por Machine Learning")
-    soma_min_pred = st.number_input("Soma mínima desejada (IA)", value=180, key='soma_min_pred')
-    soma_max_pred = st.number_input("Soma máxima desejada (IA)", value=210, key='soma_max_pred')
-    
-    def criar_features(df):
-        features = pd.DataFrame()
-        features['Soma'] = df[[f'Bola{i}' for i in range(1,7)]].sum(axis=1)
-        features['Pares'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: (x % 2 == 0).sum(), axis=1)
-        features['PrimeiroDigito'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.floor(x/10).sum(), axis=1)
-        features['UltimoDigito'] = df[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: (x % 10).sum(), axis=1)
-        return features
-    
-    if st.button("Treinar Modelo e Sugerir Combinação"):
-        try:
-            X = criar_features(df_filtered)
-            y = np.random.choice([0, 1], size=(X.shape[0],), p=[0.7, 0.3])
+# Quadrantes
+with tabs[4]:
+    try:
+        nums = df_filtered[[f'Bola{i}' for i in range(1,7)]].values.flatten()
+        quadrantes = pd.cut(nums, bins=[0,15,30,45,60], labels=['1-15','16-30','31-45','46-60']).value_counts()
+        fig_quad = px.pie(values=quadrantes.values, names=quadrantes.index, title='Distribuição por Quadrantes')
+        st.plotly_chart(fig_quad, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Quadrantes: {e}")
 
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-            modelo = RandomForestClassifier()
-            modelo.fit(X_train, y_train)
+# Modulares
+with tabs[5]:
+    try:
+        mod_5 = pd.Series(nums % 5).value_counts().sort_index()
+        mod_7 = pd.Series(nums % 7).value_counts().sort_index()
+        mod_10 = pd.Series(nums % 10).value_counts().sort_index()
+        st.write("Módulo 5:", mod_5)
+        st.write("Módulo 7:", mod_7)
+        st.write("Módulo 10:", mod_10)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Modulares: {e}")
 
-            combinacao = random.sample(list(range(1, 61)), 6)
-            st.success(f"Combinação sugerida: {combinacao}")
-        except Exception as e:
-            st.error(f"Erro ao treinar modelo: {e}")
+# Diferenças Absolutas
+with tabs[6]:
+    try:
+        diffs = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(lambda x: np.diff(np.sort(x)), axis=1).explode()
+        fig_diffs = px.histogram(diffs, nbins=20, title='Diferenças Absolutas entre Números')
+        st.plotly_chart(fig_diffs, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao gerar a aba de Diferenças Absolutas: {e}")
