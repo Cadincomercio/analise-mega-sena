@@ -15,8 +15,9 @@ st.set_page_config(page_title='Análises Mega-Sena', layout='wide')
 @st.cache_data
 def load_data(file):
     try:
-        df = pd.read_excel(file)
+        df = pd.read_excel(file, engine='openpyxl')
         df['Data do Sorteio'] = pd.to_datetime(df['Data do Sorteio'], dayfirst=True)
+        st.success("Dados carregados com sucesso!")
         return df
     except Exception as e:
         st.error(f"Erro ao carregar o arquivo: {e}")
@@ -55,6 +56,8 @@ if winners_only:
 if df_filtered.empty:
     st.error("Não existem resultados para os filtros aplicados.")
     st.stop()
+else:
+    st.success(f"{len(df_filtered)} concursos selecionados para análise.")
 
 # Criação das abas
 tabs = st.tabs([
@@ -77,7 +80,7 @@ with tabs[0]:
 # 🔍 Gravidade Numérica
 with tabs[8]:
     try:
-        gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].apply(np.mean, axis=1)
+        gravity = df_filtered[[f'Bola{i}' for i in range(1,7)]].mean(axis=1)
         fig_gravity = px.histogram(gravity, title='Gravidade Numérica dos Sorteios')
         st.plotly_chart(fig_gravity, use_container_width=True)
     except Exception as e:
